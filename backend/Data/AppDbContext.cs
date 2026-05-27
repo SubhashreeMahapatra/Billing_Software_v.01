@@ -37,7 +37,7 @@ public static class DbSeeder
 {
     public static void Seed(AppDbContext db)
     {
-        db.Database.EnsureCreated();
+       
 
         if (!db.Users.Any())
         {
@@ -45,6 +45,7 @@ public static class DbSeeder
                 new User { Username = "admin", PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"), Role = "Admin", FullName = "Restaurant Admin" },
                 new User { Username = "cashier", PasswordHash = BCrypt.Net.BCrypt.HashPassword("Cashier@123"), Role = "Cashier", FullName = "Front Cashier" }
             );
+            db.SaveChanges();
         }
 
         if (!db.Products.Any())
