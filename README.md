@@ -1,4 +1,4 @@
-# BillFlow — Restaurant Billing Software
+# GoBill — Restaurant Billing Software
 
 A full-stack restaurant billing & inventory management system built with **React + Vite**, **.NET 8 Web API**, and **SQL Server / SQLite**.
 
@@ -130,16 +130,16 @@ VITE_API_URL=http://localhost:5000/api
 
 ## Features
 
-- ✅ JWT Authentication (Admin / Cashier roles)
-- ✅ 30+ pre-loaded restaurant menu items
-- ✅ Inventory management with low-stock alerts
-- ✅ Invoice creation with GST calculation
-- ✅ PDF invoice download (jsPDF)
-- ✅ Customer management
-- ✅ Dashboard with KPIs & charts
-- ✅ Sales reports by category
-- ✅ Data persists in SQL database
-- ✅ Responsive design (Tailwind CSS)
+- JWT Authentication (Admin / Cashier roles)
+- 30+ pre-loaded restaurant menu items
+- Inventory management with low-stock alerts
+- Invoice creation with GST calculation
+- PDF invoice download (jsPDF)
+- Customer management
+- Dashboard with KPIs & charts
+- Sales reports by category
+- Data persists in SQL database
+- Responsive design (Tailwind CSS)
 
 ---
 
