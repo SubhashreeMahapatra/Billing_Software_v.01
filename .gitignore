@@ -1,0 +1,21 @@
+# Node
+node_modules/
+dist/
+.env.local
+.env.production
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+billflow.db
+billflow.db-shm
+billflow.db-wal
+publish/
+
+# General
+.DS_Store
+Thumbs.db
+*.log

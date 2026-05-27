@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BillFlow — Restaurant Billing</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════ AUTH SCREEN ═══════ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-icon-lg">🍽️</div>
+      <h1>BillFlow</h1>
+      <p>Restaurant Billing & Management</p>
+    </div>
+    <div id="auth-error" class="auth-error" style="display:none"></div>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="login-user" placeholder="admin / cashier / manager" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-pass" placeholder="Enter password" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="doLogin()">Sign In</button>
+    <div class="auth-hint">
+      Demo accounts: <strong>admin</strong> / admin123 &nbsp;|&nbsp; <strong>cashier</strong> / cash123 &nbsp;|&nbsp; <strong>manager</strong> / mgr123
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ MAIN APP ══════════ -->
+<div id="main-app" style="display:none">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🍽️</div>
+      <div>
+        <div class="logo-text">BillFlow</div>
+        <div class="logo-sub" id="biz-name-display">Restaurant</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-label">Main</div>
+      <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard',this)">
+        <span class="nav-icon">📊</span>Dashboard
+      </button>
+      <button class="nav-item" data-page="billing" onclick="showPage('billing',this)">
+        <span class="nav-icon">🧾</span>New Order / Bill
+      </button>
+      <button class="nav-item" data-page="invoices" onclick="showPage('invoices',this)">
+        <span class="nav-icon">📋</span>Bills / Invoices
+        <span class="nav-badge" id="nav-inv-count">0</span>
+      </button>
+      <div class="nav-label">Restaurant</div>
+      <button class="nav-item" data-page="menu" onclick="showPage('menu',this)">
+        <span class="nav-icon">🍕</span>Menu & Inventory
+      </button>
+      <button class="nav-item" data-page="tables" onclick="showPage('tables',this)">
+        <span class="nav-icon">🪑</span>Table Management
+      </button>
+      <button class="nav-item" data-page="customers" onclick="showPage('customers',this)">
+        <span class="nav-icon">👥</span>Customers
+      </button>
+      <div class="nav-label admin-only">Administration</div>
+      <button class="nav-item admin-only" data-page="reports" onclick="showPage('reports',this)">
+        <span class="nav-icon">📈</span>Reports
+      </button>
+      <button class="nav-item admin-only" data-page="users" onclick="showPage('users',this)">
+        <span class="nav-icon">👤</span>User Management
+      </button>
+      <button class="nav-item admin-only" data-page="settings" onclick="showPage('settings',this)">
+        <span class="nav-icon">⚙️</span>Settings
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="user-avatar" id="nav-avatar">AD</div>
+        <div>
+          <div class="user-name" id="nav-username">Admin</div>
+          <div class="user-role" id="nav-role">Administrator</div>
+        </div>
+        <button class="btn-icon" onclick="doLogout()" title="Sign out">🚪</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+    <header class="topbar">
+      <button class="btn-icon mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title" id="page-title">Dashboard</div>
+      <div class="topbar-actions">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="global-search" placeholder="Search…" oninput="globalSearch(this.value)">
+        </div>
+        <button class="btn btn-primary" onclick="showPage('billing',document.querySelector('[data-page=billing]'))">
+          + New Bill
+        </button>
+      </div>
+    </header>
+
+    <div class="content" id="main-content">
+
+      <!-- ─── DASHBOARD ─────────────────────────────── -->
+      <div id="page-dashboard" class="page active">
+        <div class="kpi-grid" id="kpi-grid"></div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Recent Bills</span></div>
+            <div id="dash-recent"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">⚠️ Low Stock / Unavailable</span></div>
+            <div id="dash-lowstock"></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-header"><span class="card-title">Top Selling Items Today</span></div>
+          <div id="dash-topsales"></div>
+        </div>
+      </div>
+
+      <!-- ─── BILLING ───────────────────────────────── -->
+      <div id="page-billing" class="page">
+        <div class="billing-grid">
+          <div class="billing-left">
+
+            <!-- Order Header -->
+            <div class="card" style="margin-bottom:14px">
+              <div class="card-header"><span class="card-title">🧾 Order Details</span></div>
+              <div class="card-body">
+                <div class="form-row3">
+                  <div class="form-group">
+                    <label>Bill #</label>
+                    <input id="inv-number" readonly style="background:var(--bg2)">
+                  </div>
+                  <div class="form-group">
+                    <label>Date & Time</label>
+                    <input type="datetime-local" id="inv-datetime">
+                  </div>
+                  <div class="form-group">
+                    <label>Table</label>
+                    <select id="inv-table" onchange="updatePreview()">
+                      <option value="">Takeaway</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Customer Name</label>
+                    <input id="inv-customer" placeholder="Walk-in / Name" list="customer-datalist" oninput="updatePreview()">
+                    <datalist id="customer-datalist"></datalist>
+                  </div>
+                  <div class="form-group">
+                    <label>Phone</label>
+                    <input id="inv-phone" placeholder="+91 …" oninput="updatePreview()">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Order Notes</label>
+                  <textarea id="inv-notes" rows="2" placeholder="Special requests, allergies…" oninput="updatePreview()"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Menu Quick-Add -->
+            <div class="card" style="margin-bottom:14px">
+              <div class="card-header">
+                <span class="card-title">🍽️ Menu</span>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <select id="menu-cat-filter" onchange="renderMenuPicker()">
+                    <option value="">All Categories</option>
+                  </select>
+                  <input type="text" id="menu-search" placeholder="Search menu…" oninput="renderMenuPicker()" style="width:140px">
+                </div>
+              </div>
+              <div class="card-body" style="padding:10px">
+                <div id="menu-picker" class="menu-picker-grid"></div>
+              </div>
+            </div>
+
+            <!-- Line Items -->
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">📝 Order Items</span>
+                <button class="btn btn-sm" onclick="addLineItem()">+ Add Custom</button>
+              </div>
+              <div class="card-body">
+                <div class="line-items-header">
+                  <span>Item</span><span>Qty</span><span>Rate (₹)</span><span>Amt</span><span></span>
+                </div>
+                <div id="line-items"></div>
+                <div class="inv-total">
+                  <div class="inv-total-row"><span>Subtotal</span><span id="inv-subtotal">₹0.00</span></div>
+                  <div class="inv-total-row">
+                    <span>GST (<input type="number" id="inv-gst-pct" value="5" min="0" max="28" style="width:40px;display:inline;padding:2px 6px" oninput="updatePreview()">%)</span>
+                    <span id="inv-gst-amt">₹0.00</span>
+                  </div>
+                  <div class="inv-total-row">
+                    <span>Discount (<input type="number" id="inv-discount" value="0" min="0" max="100" style="width:40px;display:inline;padding:2px 6px" oninput="updatePreview()">%)</span>
+                    <span id="inv-disc-amt">-₹0.00</span>
+                  </div>
+                  <div class="inv-total-row grand">
+                    <span>Grand Total</span>
+                    <span id="inv-grand">₹0.00</span>
+                  </div>
+                </div>
+                <div class="form-group" style="margin-top:12px">
+                  <label>Payment Mode</label>
+                  <div class="payment-modes">
+                    <label class="pay-opt"><input type="radio" name="pay-mode" value="Cash" checked> 💵 Cash</label>
+                    <label class="pay-opt"><input type="radio" name="pay-mode" value="UPI"> 📱 UPI</label>
+                    <label class="pay-opt"><input type="radio" name="pay-mode" value="Card"> 💳 Card</label>
+                    <label class="pay-opt"><input type="radio" name="pay-mode" value="Pending"> ⏳ Pending</label>
+                  </div>
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+                  <button class="btn" onclick="clearBill()">🗑️ Clear</button>
+                  <button class="btn btn-secondary" onclick="saveInvoice('pending')">💾 Save Draft</button>
+                  <button class="btn btn-primary" onclick="saveInvoice('paid')">✅ Save & Print Bill</button>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- billing-left -->
+
+          <!-- Preview -->
+          <div class="billing-right">
+            <div class="card sticky-card">
+              <div class="card-header">
+                <span class="card-title">Bill Preview</span>
+                <span class="badge badge-info" id="prev-status">Draft</span>
+              </div>
+              <div class="card-body" id="invoice-preview" style="font-size:12px;line-height:1.7"></div>
+            </div>
+          </div>
+
+        </div><!-- billing-grid -->
+      </div>
+
+      <!-- ─── INVOICES LIST ──────────────────────────── -->
+      <div id="page-invoices" class="page">
+        <div class="page-toolbar">
+          <div class="tab-bar" id="inv-tab-bar">
+            <button class="tab active" onclick="filterInvoices('all',this)">All</button>
+            <button class="tab" onclick="filterInvoices('paid',this)">Paid</button>
+            <button class="tab" onclick="filterInvoices('pending',this)">Pending</button>
+            <button class="tab" onclick="filterInvoices('cancelled',this)">Cancelled</button>
+          </div>
+          <div style="display:flex;gap:8px">
+            <input type="date" id="inv-date-filter" onchange="renderInvoices()" style="font-size:12px">
+            <button class="btn btn-sm" onclick="document.getElementById('inv-date-filter').value='';renderInvoices()">Clear</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Bill #</th><th>Customer</th><th>Table</th>
+                  <th>Date & Time</th><th>Amount</th><th>Payment</th>
+                  <th>Status</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="invoices-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── MENU & INVENTORY ───────────────────────── -->
+      <div id="page-menu" class="page">
+        <div class="page-toolbar">
+          <button class="btn btn-primary" onclick="openProductModal()">+ Add Menu Item</button>
+          <select id="inv-cat-filter" onchange="renderMenuInventory()" style="font-size:13px">
+            <option value="">All Categories</option>
+          </select>
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="inv-search" placeholder="Search items…" oninput="renderMenuInventory()">
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Item Name</th><th>Category</th><th>Price</th>
+                  <th>Cost</th><th>Stock/Portions</th><th>Status</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="menu-table"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Product Modal -->
+        <div id="product-modal" class="modal-backdrop" style="display:none">
+          <div class="modal">
+            <div class="modal-header">
+              <span class="modal-title" id="prod-modal-title">Add Menu Item</span>
+              <button class="btn-icon" onclick="closeProductModal()">✕</button>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Item Name *</label><input id="prod-name" placeholder="e.g. Butter Chicken"></div>
+              <div class="form-group">
+                <label>Category *</label>
+                <select id="prod-cat">
+                  <option>Starters</option><option>Main Course</option><option>Breads</option>
+                  <option>Rice & Biryani</option><option>Chinese</option><option>South Indian</option>
+                  <option>Desserts</option><option>Beverages</option><option>Soups</option>
+                  <option>Salads</option><option>Fast Food</option><option>Thalis</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Sale Price (₹) *</label><input type="number" id="prod-price" min="0" placeholder="0.00"></div>
+              <div class="form-group"><label>Cost Price (₹)</label><input type="number" id="prod-cost" min="0" placeholder="0.00"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Available Portions</label><input type="number" id="prod-stock" min="0" placeholder="Leave blank = unlimited"></div>
+              <div class="form-group"><label>Low Stock Alert</label><input type="number" id="prod-lowstock" min="0" placeholder="5"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Type</label>
+                <select id="prod-type"><option value="veg">🟢 Veg</option><option value="nonveg">🔴 Non-Veg</option><option value="egg">🟡 Egg</option></select>
+              </div>
+              <div class="form-group">
+                <label>Status</label>
+                <select id="prod-status"><option value="available">Available</option><option value="unavailable">Unavailable</option></select>
+              </div>
+            </div>
+            <div class="form-group"><label>Description</label><textarea id="prod-desc" rows="2" placeholder="Short description…"></textarea></div>
+            <input type="hidden" id="prod-edit-id" value="">
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+              <button class="btn" onclick="closeProductModal()">Cancel</button>
+              <button class="btn btn-primary" onclick="saveProduct()">Save Item</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── TABLE MANAGEMENT ───────────────────────── -->
+      <div id="page-tables" class="page">
+        <div class="page-toolbar">
+          <button class="btn btn-primary admin-only" onclick="openTableModal()">+ Add Table</button>
+          <div class="legend">
+            <span class="legend-dot" style="background:#22c55e"></span>Free
+            <span class="legend-dot" style="background:#f59e0b"></span>Occupied
+            <span class="legend-dot" style="background:#ef4444"></span>Reserved
+          </div>
+        </div>
+        <div id="tables-grid" class="tables-grid"></div>
+        <div id="table-modal" class="modal-backdrop" style="display:none">
+          <div class="modal" style="max-width:340px">
+            <div class="modal-header"><span class="modal-title">Add / Edit Table</span><button class="btn-icon" onclick="closeTableModal()">✕</button></div>
+            <div class="form-group"><label>Table Name/Number *</label><input id="tbl-name" placeholder="e.g. Table 1, VIP Room"></div>
+            <div class="form-group"><label>Capacity (seats)</label><input type="number" id="tbl-cap" min="1" value="4"></div>
+            <input type="hidden" id="tbl-edit-id" value="">
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+              <button class="btn" onclick="closeTableModal()">Cancel</button>
+              <button class="btn btn-primary" onclick="saveTable()">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── CUSTOMERS ─────────────────────────────── -->
+      <div id="page-customers" class="page">
+        <div class="page-toolbar">
+          <button class="btn btn-primary" onclick="openCustomerModal()">+ Add Customer</button>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Visits</th><th>Total Spent</th><th>Actions</th></tr></thead>
+              <tbody id="customers-table"></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="customer-modal" class="modal-backdrop" style="display:none">
+          <div class="modal">
+            <div class="modal-header"><span class="modal-title">Add Customer</span><button class="btn-icon" onclick="closeCustomerModal()">✕</button></div>
+            <div class="form-row">
+              <div class="form-group"><label>Full Name *</label><input id="cust-name" placeholder="Customer name"></div>
+              <div class="form-group"><label>Phone *</label><input id="cust-phone" placeholder="+91 98765 43210"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Email</label><input id="cust-email" placeholder="email@example.com"></div>
+              <div class="form-group"><label>GSTIN</label><input id="cust-gstin" placeholder="Optional"></div>
+            </div>
+            <div class="form-group"><label>Address</label><textarea id="cust-address" rows="2" placeholder="Address…"></textarea></div>
+            <input type="hidden" id="cust-edit-id" value="">
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+              <button class="btn" onclick="closeCustomerModal()">Cancel</button>
+              <button class="btn btn-primary" onclick="saveCustomer()">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── REPORTS ────────────────────────────────── -->
+      <div id="page-reports" class="page">
+        <div class="page-toolbar">
+          <div style="display:flex;gap:10px;align-items:center">
+            <label style="font-size:13px">From:</label>
+            <input type="date" id="rep-from" style="font-size:12px">
+            <label style="font-size:13px">To:</label>
+            <input type="date" id="rep-to" style="font-size:12px">
+            <button class="btn btn-primary btn-sm" onclick="renderReports()">Generate</button>
+          </div>
+        </div>
+        <div class="kpi-grid" id="rep-kpi-grid"></div>
+        <div class="two-col" style="margin-top:16px">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Sales by Category</span></div>
+            <div class="card-body" id="rep-cat-chart" style="min-height:200px"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Payment Breakdown</span></div>
+            <div class="card-body" id="rep-pay-chart" style="min-height:200px"></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-header"><span class="card-title">Top 10 Items by Revenue</span></div>
+          <div id="rep-top-items" class="card-body"></div>
+        </div>
+      </div>
+
+      <!-- ─── USER MANAGEMENT ───────────────────────── -->
+      <div id="page-users" class="page admin-only-page">
+        <div class="page-toolbar">
+          <button class="btn btn-primary" onclick="openUserModal()">+ Add User</button>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Username</th><th>Full Name</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="users-table"></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="user-modal" class="modal-backdrop" style="display:none">
+          <div class="modal" style="max-width:400px">
+            <div class="modal-header"><span class="modal-title" id="user-modal-title">Add User</span><button class="btn-icon" onclick="closeUserModal()">✕</button></div>
+            <div class="form-group"><label>Username *</label><input id="usr-username" placeholder="username"></div>
+            <div class="form-group"><label>Full Name *</label><input id="usr-fullname" placeholder="Full name"></div>
+            <div class="form-group"><label>Password *</label><input type="password" id="usr-password" placeholder="Password"></div>
+            <div class="form-group">
+              <label>Role</label>
+              <select id="usr-role">
+                <option value="admin">Admin (full access)</option>
+                <option value="manager">Manager</option>
+                <option value="cashier">Cashier</option>
+              </select>
+            </div>
+            <input type="hidden" id="usr-edit-id" value="">
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+              <button class="btn" onclick="closeUserModal()">Cancel</button>
+              <button class="btn btn-primary" onclick="saveUser()">Save User</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── SETTINGS ──────────────────────────────── -->
+      <div id="page-settings" class="page admin-only-page">
+        <div class="card" style="max-width:560px">
+          <div class="card-header"><span class="card-title">⚙️ Business Settings</span></div>
+          <div class="card-body">
+            <div class="form-group"><label>Restaurant Name *</label><input id="set-bizname" value=""></div>
+            <div class="form-group"><label>Tagline / Cuisine</label><input id="set-tagline" placeholder="e.g. Pure Veg | North Indian & Chinese"></div>
+            <div class="form-row">
+              <div class="form-group"><label>GSTIN</label><input id="set-gstin" placeholder="22AAAAA0000A1Z5"></div>
+              <div class="form-group"><label>FSSAI No.</label><input id="set-fssai" placeholder="FSSAI number"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Phone</label><input id="set-phone" placeholder="+91 …"></div>
+              <div class="form-group"><label>Email</label><input id="set-email" placeholder="restaurant@email.com"></div>
+            </div>
+            <div class="form-group"><label>Address</label><textarea id="set-address" rows="2" placeholder="Full address"></textarea></div>
+            <div class="form-row">
+              <div class="form-group"><label>Default GST %</label><input type="number" id="set-gst" value="5" min="0" max="28"></div>
+              <div class="form-group"><label>Service Charge %</label><input type="number" id="set-svc" value="0" min="0" max="20"></div>
+            </div>
+            <div class="form-group"><label>Bill Footer Message</label><textarea id="set-footer" rows="2" placeholder="Thank you for dining with us!"></textarea></div>
+            <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- content -->
+  </div><!-- main -->
+</div><!-- main-app -->
+
+<div id="toast" class="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
