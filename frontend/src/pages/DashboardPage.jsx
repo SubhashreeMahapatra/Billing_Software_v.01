@@ -89,7 +89,7 @@ export default function DashboardPage() {
                       { name: 'Pending', value: stats.pendingInvoices },
                       { name: 'Others', value: stats.totalInvoices - stats.paidInvoices - stats.pendingInvoices },
                     ].filter(d => d.value > 0)}
-                    cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    cx="50%" cy="50%" outerRadius={65} innerRadius={30} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={true} paddingAngle={3}
                   >
                     {['#10b981', '#f59e0b', '#ef4444'].map((c, i) => <Cell key={i} fill={c} />)}
                   </Pie>
