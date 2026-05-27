@@ -39,8 +39,7 @@ builder.Services.AddCors(opt =>
     opt.AddDefaultPolicy(p => p
         .WithOrigins(allowedOrigins)
         .AllowAnyHeader()
-        .AllowAnyMethod()
-        .AllowCredentials()));
+        .AllowAnyMethod()));
 
 var app = builder.Build();
 
