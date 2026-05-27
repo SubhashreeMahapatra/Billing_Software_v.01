@@ -46,6 +46,12 @@ public static class DbSeeder
                 new User { Username = "cashier", PasswordHash = BCrypt.Net.BCrypt.HashPassword("Cashier@123"), Role = "Cashier", FullName = "Front Cashier" }
             );
             db.SaveChanges();
+            Console.WriteLine("✅ Users seeded!"); // ← add this
+    }
+    else
+    {
+        Console.WriteLine($"ℹ️ Users already exist: {db.Users.Count()}"); // ← add this
+    }
         }
 
         if (!db.Products.Any())
