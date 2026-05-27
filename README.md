@@ -1,4 +1,4 @@
-# GoBill — Restaurant Billing Software
+# BillFlow — Restaurant Billing Software
 
 A full-stack restaurant billing & inventory management system built with **React + Vite**, **.NET 8 Web API**, and **SQL Server / SQLite**.
 
