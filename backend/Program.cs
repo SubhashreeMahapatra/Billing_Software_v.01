@@ -36,7 +36,11 @@ builder.Services.AddEndpointsApiExplorer();
 // CORS
 var allowedOrigins = builder.Configuration["AllowedOrigins"]?.Split(",") ?? ["http://localhost:5173"];
 builder.Services.AddCors(opt =>
-    opt.AddDefaultPolicy(p => p.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
+    opt.AddDefaultPolicy(p => p
+        .WithOrigins(allowedOrigins)
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials()));
 
 var app = builder.Build();
 
